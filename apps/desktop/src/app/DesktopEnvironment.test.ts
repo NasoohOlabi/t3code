@@ -13,9 +13,9 @@ const defaultInput = {
   platform: "darwin",
   processArch: "arm64",
   appVersion: "0.0.22",
-  appPath: "/Applications/T3 Code.app/Contents/Resources/app.asar",
+  appPath: "/Applications/Naso Code Lab.app/Contents/Resources/app.asar",
   isPackaged: false,
-  resourcesPath: "/Applications/T3 Code.app/Contents/Resources",
+  resourcesPath: "/Applications/Naso Code Lab.app/Contents/Resources",
   runningUnderArm64Translation: false,
 } satisfies DesktopEnvironment.MakeDesktopEnvironmentInput;
 
@@ -36,6 +36,9 @@ const makeEnvironment = (
     return yield* DesktopEnvironment.DesktopEnvironment;
   }).pipe(Effect.provide(makeEnvironmentLayer(overrides, env)));
 
+const normalizePath = (value: string) => value.replaceAll("\\", "/");
+const stripWindowsDrive = (value: string) => normalizePath(value).replace(/^[A-Z]:/i, "");
+
 describe("DesktopEnvironment", () => {
   it.effect("derives state paths and development identity inside Effect", () =>
     Effect.gen(function* () {
@@ -53,20 +56,35 @@ describe("DesktopEnvironment", () => {
       );
 
       assert.equal(environment.isDevelopment, true);
-      assert.equal(environment.appDataDirectory, "/Users/alice/Library/Application Support");
-      assert.equal(environment.baseDir, "/tmp/t3");
-      assert.equal(environment.stateDir, "/tmp/t3/dev");
-      assert.equal(environment.desktopSettingsPath, "/tmp/t3/dev/desktop-settings.json");
-      assert.equal(environment.clientSettingsPath, "/tmp/t3/dev/client-settings.json");
-      assert.equal(environment.savedEnvironmentRegistryPath, "/tmp/t3/dev/saved-environments.json");
-      assert.equal(environment.serverSettingsPath, "/tmp/t3/dev/settings.json");
-      assert.equal(environment.logDir, "/tmp/t3/dev/logs");
-      assert.equal(environment.rootDir, "/repo");
-      assert.equal(environment.appRoot, "/repo");
-      assert.equal(environment.backendEntryPath, "/repo/apps/server/dist/bin.mjs");
-      assert.equal(environment.backendCwd, "/repo");
-      assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev");
-      assert.equal(environment.linuxWmClass, "t3code-dev");
+      assert.equal(
+        normalizePath(environment.appDataDirectory),
+        "/Users/alice/Library/Application Support",
+      );
+      assert.equal(normalizePath(environment.baseDir), "/tmp/t3");
+      assert.equal(normalizePath(environment.stateDir), "/tmp/t3/dev");
+      assert.equal(
+        normalizePath(environment.desktopSettingsPath),
+        "/tmp/t3/dev/desktop-settings.json",
+      );
+      assert.equal(
+        normalizePath(environment.clientSettingsPath),
+        "/tmp/t3/dev/client-settings.json",
+      );
+      assert.equal(
+        normalizePath(environment.savedEnvironmentRegistryPath),
+        "/tmp/t3/dev/saved-environments.json",
+      );
+      assert.equal(normalizePath(environment.serverSettingsPath), "/tmp/t3/dev/settings.json");
+      assert.equal(normalizePath(environment.logDir), "/tmp/t3/dev/logs");
+      assert.equal(stripWindowsDrive(environment.rootDir), "/repo");
+      assert.equal(stripWindowsDrive(environment.appRoot), "/repo");
+      assert.equal(
+        stripWindowsDrive(environment.backendEntryPath),
+        "/repo/apps/server/dist/bin.mjs",
+      );
+      assert.equal(stripWindowsDrive(environment.backendCwd), "/repo");
+      assert.equal(environment.appUserModelId, "com.nasooholabi.nasocodelab.dev");
+      assert.equal(environment.linuxWmClass, "naso-code-lab-dev");
       assert.deepEqual(
         Option.map(environment.devServerUrl, (url) => url.href),
         Option.some("http://localhost:5173/"),
@@ -89,9 +107,9 @@ describe("DesktopEnvironment", () => {
       );
 
       assert.equal(environment.isDevelopment, false);
-      assert.equal(environment.stateDir, "/tmp/t3/userdata");
-      assert.equal(environment.logDir, "/tmp/t3/userdata/logs");
-      assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata/settings.json");
+      assert.equal(normalizePath(environment.stateDir), "/tmp/t3/userdata");
+      assert.equal(normalizePath(environment.logDir), "/tmp/t3/userdata/logs");
+      assert.equal(normalizePath(environment.serverSettingsPath), "/tmp/t3/userdata/settings.json");
     }),
   );
 
@@ -105,11 +123,14 @@ describe("DesktopEnvironment", () => {
         Option.none(),
       );
       assert.deepEqual(
-        environment.resolvePickFolderDefaultPath({ initialPath: "~" }),
+        Option.map(environment.resolvePickFolderDefaultPath({ initialPath: "~" }), normalizePath),
         Option.some("/Users/alice"),
       );
       assert.deepEqual(
-        environment.resolvePickFolderDefaultPath({ initialPath: "~/project" }),
+        Option.map(
+          environment.resolvePickFolderDefaultPath({ initialPath: "~/project" }),
+          normalizePath,
+        ),
         Option.some("/Users/alice/project"),
       );
     }),
